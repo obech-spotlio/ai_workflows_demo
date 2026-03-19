@@ -1,0 +1,15 @@
+# Tooling configuration directories — not part of the app source
+.claude/
+.codex/
+.opencode/
+
+# Build outputs
+.next/
+out/
+build/
+
+# Dependency directories
+node_modules/
+
+# Auto-generated
+next-env.d.ts

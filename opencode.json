@@ -1,0 +1,88 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "build",
+  "share": "manual",
+  "instructions": [".opencode/WORKFLOW.md"],
+  "mcp": {
+    "jira": {
+      "type": "local",
+      "command": ["npx", "-y", "@aashari/mcp-server-atlassian-jira"],
+      "enabled": true,
+      "environment": {
+        "ATLASSIAN_SITE_NAME": "{env:ATLASSIAN_SITE_NAME}",
+        "ATLASSIAN_USER_EMAIL": "{env:ATLASSIAN_USER_EMAIL}",
+        "ATLASSIAN_API_TOKEN": "{env:ATLASSIAN_API_TOKEN}"
+      }
+    },
+    "bitbucket": {
+      "type": "local",
+      "command": ["npx", "-y", "bitbucket-mcp@latest"],
+      "enabled": true,
+      "environment": {
+        "BITBUCKET_URL": "{env:BITBUCKET_URL}",
+        "BITBUCKET_WORKSPACE": "{env:BITBUCKET_WORKSPACE}",
+        "BITBUCKET_USERNAME": "{env:BITBUCKET_USERNAME}",
+        "BITBUCKET_PASSWORD": "{env:BITBUCKET_PASSWORD}"
+      }
+    }
+  },
+  "permission": {
+    "skill": "allow",
+    "question": "allow",
+    "webfetch": "allow",
+    "websearch": "allow"
+  },
+  "agent": {
+    "build": {
+      "mode": "primary",
+      "description": "Default implementation agent for coding, testing, git, and workflow execution.",
+      "permission": {
+        "task": {
+          "*": "deny",
+          "ticket-planner": "allow",
+          "coder": "allow",
+          "reviewer": "allow",
+          "publisher": "allow",
+          "general": "allow",
+          "explore": "allow"
+        }
+      }
+    },
+    "plan": {
+      "mode": "primary",
+      "description": "Planning agent for Jira analysis and implementation planning without code changes.",
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "deny",
+          "git status*": "allow",
+          "git branch*": "allow",
+          "git log*": "allow",
+          "git diff*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "ticket-planner": "allow",
+          "explore": "allow"
+        }
+      }
+    }
+  },
+  "command": {
+    "ticket-start": {
+      "description": "Analyze Jira ticket and prepare branch workflow",
+      "agent": "plan",
+      "template": "You are starting work for Jira ticket $1.\n\nWorkflow:\n1. Load the `jira-intake` skill.\n2. Use @ticket-planner to read the Jira ticket and acceptance criteria via the Jira MCP.\n3. Inspect existing Bitbucket branches via the Bitbucket MCP to spot naming conventions or existing work. Read only.\n4. Derive a stable functionality slug and write the planning handoff to `./specs/<functionality>/$1.md`.\n5. The spec must include ticket summary, acceptance criteria checklist, dependencies, risks, open questions, and a recommended branch name in the format `feature/$1-short-description` unless the ticket is clearly a bug or chore.\n6. If local git access is available, check current branch and suggest the exact `git switch -c ...` command, but do not commit or push anything."
+    },
+    "ticket-implement": {
+      "description": "Implement a Jira ticket with subagents",
+      "agent": "build",
+      "template": "Implement Jira ticket $1.\n\nWorkflow:\n1. Load the `jira-intake`, `conventional-commit`, and `release-readiness` skills.\n2. Find and read the ticket spec from `./specs/<functionality>/$1.md`. If it does not exist yet, use @ticket-planner to create it first.\n3. Use @coder to implement the required changes in the repository against that spec and note which acceptance criteria are covered.\n4. Use @reviewer to run the relevant lint, test, and build commands and fix issues if needed.\n5. Keep the work aligned to ticket $1 and prepare a concise release-readiness note with checks run, remaining risks, next action, and the spec path used."
+    },
+    "ticket-finish": {
+      "description": "Create commits, push branch, and open Bitbucket PR",
+      "agent": "build",
+      "template": "Finish Jira ticket $1.\n\nWorkflow:\n1. Load the `conventional-commit`, `bitbucket-pr`, and `release-readiness` skills.\n2. Confirm the working tree changes belong to ticket $1 and read the ticket spec from `./specs/<functionality>/$1.md`.\n3. Use @reviewer to perform final verification against that spec.\n4. Use @publisher to create conventional commit messages that include ticket $1, push the current branch to origin, and open the pull request. Never push directly to `main` or `master`.\n5. Return the branch name, commit message(s), verification summary, remaining risks, PR link, and spec path used."
+    }
+  }
+}
