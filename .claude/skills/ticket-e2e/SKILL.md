@@ -17,10 +17,20 @@ This orchestrates the three ticket phases sequentially. Each phase must complete
 4. The spec must include ticket summary, acceptance criteria checklist, implementation approach, dependencies, risks, open questions, and suggested branch slug.
 5. Create the feature branch in the format `feature/$ARGUMENTS-short-description` (or `fix/` / `chore/` if appropriate). Use `git switch -c <branch>`.
 
+## Phase 1.5 — Design (Stitch)
+
+Only run this phase if the spec's **UI Components** section lists at least one component.
+
+1. Read the **UI Components** section from the spec.
+2. Use `mcp__stitch__create_project` to create a Stitch project named after the ticket key (e.g. `SS-3616`).
+3. For each UI component or page listed in the spec, call `mcp__stitch__generate_screen_from_text` with a prompt derived from the component's purpose, props, and layout notes in the spec.
+4. After generation, call `mcp__stitch__get_screen` for each generated screen and save the result (screen ID, name, and any returned layout/code) into a `## Stitch Designs` section appended to the spec file. Include the Stitch project ID.
+5. If Stitch generation fails for any screen, log a warning in the spec and continue — do not block Phase 2.
+
 ## Phase 2 — Implement (`ticket-implement`)
 
-1. Read the spec from `./specs/<functionality>/$ARGUMENTS.md`.
-2. Use the `coder` subagent to implement the required changes against that spec.
+1. Read the spec from `./specs/<functionality>/$ARGUMENTS.md`, including the `## Stitch Designs` section if present.
+2. Use the `coder` subagent to implement the required changes against that spec. The coder **must** use the Stitch-generated screen designs as the authoritative reference for any UI component layout and structure. If no Stitch designs exist for a component, note the gap and implement a minimal placeholder.
 3. Use the `reviewer` subagent to run lint, test, and build commands and fix issues if needed.
 4. Finish with a release-readiness note: checks run, remaining risks, next action, and spec path.
 
